@@ -58,6 +58,27 @@ class _NewPostScreenState extends State<NewPostScreen> {
       ..add(GetTaggingListEvent(feedroomId: feedRoomId));
   }
 
+  void uploading() => setState(() {
+        isUploading = true;
+      });
+
+  void addAttachment(Attachment attachment) {
+    attachments.add(attachment);
+  }
+
+  void onUploaded(bool uploadResponse) {
+    if (uploadResponse) {
+      setState(() {
+        uploaded = true;
+        isUploading = false;
+      });
+    } else {
+      setState(() {
+        isUploading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     screenSize = MediaQuery.of(context).size;
@@ -202,14 +223,11 @@ class _NewPostScreenState extends State<NewPostScreen> {
                         child: PostImage(
                             height:
                                 min(constraints.maxHeight, screenSize!.width),
-                            url: attachments
-                                .map((e) => e.attachmentMeta.url.toString())
-                                .toList(),
+                            attachments: attachments,
                             postId: ''),
                       );
                     }),
                   ),
-
                 // Expanded(
                 //   child: Container(
                 //     decoration: BoxDecoration(
@@ -224,33 +242,23 @@ class _NewPostScreenState extends State<NewPostScreen> {
                 //   ),
                 // ),
                 kVerticalPaddingSmall,
-                AddAssetsButton(
-                  leading: SvgPicture.asset(
-                    'packages/feed_sx/assets/icons/add_photo.svg',
-                    height: 24,
-                  ),
-                  title: const Text('Add Photo'),
-                  picker: _picker,
-                  uploading: () {
-                    setState(() {
-                      isUploading = true;
-                    });
-                  },
-                  onUploaded: (bool uploadResponse) {
-                    if (uploadResponse) {
-                      setState(() {
-                        uploaded = true;
-                        isUploading = false;
-                      });
-                    } else {
-                      setState(() {
-                        isUploading = false;
-                      });
-                    }
-                  },
-                  addAttachment: (Attachment attachment) {
-                    attachments.add(attachment);
-                  },
+                SizedBox(
+                  child: Flex(direction: Axis.vertical, children: [
+                    AddAssetsButton(
+                      mediaType: 1,
+                      picker: _picker,
+                      uploading: uploading,
+                      onUploaded: onUploaded,
+                      addAttachment: addAttachment,
+                    ),
+                    AddAssetsButton(
+                      mediaType: 2,
+                      picker: _picker,
+                      uploading: uploading,
+                      onUploaded: onUploaded,
+                      addAttachment: addAttachment,
+                    ),
+                  ]),
                 )
               ]),
             )),
@@ -260,22 +268,36 @@ class _NewPostScreenState extends State<NewPostScreen> {
 }
 
 class AddAssetsButton extends StatelessWidget {
-  final Widget title;
-  final Widget leading;
   final ImagePicker picker;
+  final int mediaType;
   final Function(bool uploadResponse) onUploaded;
   final Function() uploading;
   final Function(Attachment) addAttachment;
 
-  const AddAssetsButton({
-    super.key,
-    required this.leading,
-    required this.title,
-    required this.picker,
-    required this.onUploaded,
-    required this.uploading,
-    required this.addAttachment,
-  });
+  AddAssetsButton(
+      {super.key,
+      required this.picker,
+      required this.onUploaded,
+      required this.uploading,
+      required this.addAttachment,
+      required this.mediaType});
+
+  final Map<int, Map> buttonAssets = {
+    1: {
+      'leading': SvgPicture.asset(
+        'packages/feed_sx/assets/icons/add_photo.svg',
+        height: 24,
+      ),
+      'title': 'Add Photo'
+    },
+    2: {
+      'leading': SvgPicture.asset(
+        'packages/feed_sx/assets/icons/add_video.svg',
+        height: 24,
+      ),
+      'title': 'Add Video'
+    }
+  };
 
   void uploadImages(List<File> croppedFiles) async {
     for (final image in croppedFiles) {
@@ -300,29 +322,60 @@ class AddAssetsButton extends StatelessWidget {
     onUploaded(true);
   }
 
+  void uploadVideo() async {
+    XFile? video = await picker.pickVideo(source: ImageSource.gallery);
+    if (video != null) {
+      try {
+        File file = File.fromUri(Uri(path: video.path));
+        final String? response =
+            await locator<LikeMindsService>().uploadFile(file);
+        if (response != null) {
+          addAttachment(Attachment(
+            attachmentType: 2,
+            attachmentMeta: AttachmentMeta(
+              url: response,
+            ),
+          ));
+        } else {
+          throw ('Error uploading file');
+        }
+      } catch (e) {
+        print(e);
+      }
+    }
+    onUploaded(true);
+  }
+
   @override
   Widget build(BuildContext context) {
     Size screenSize = MediaQuery.of(context).size;
     return GestureDetector(
       onTap: () async {
         uploading();
-        final list = await picker.pickMultiImage();
-        List<File> croppedFiles = [];
-        MultiImageCrop.startCropping(
-            context: context,
-            activeColor: kWhiteColor,
-            files: list.map((e) => File(e.path)).toList(),
-            aspectRatio: 1.0,
-            callBack: (List<File> images) {
-              croppedFiles = images;
-              uploadImages(croppedFiles);
-            });
+        if (mediaType == 2) {
+          uploadVideo();
+        } else if (mediaType == 1) {
+          final list = await picker.pickMultiImage();
+          List<File> croppedFiles = [];
+          MultiImageCrop.startCropping(
+              context: context,
+              activeColor: kWhiteColor,
+              files: list.map((e) => File(e.path)).toList(),
+              aspectRatio: 1.0,
+              callBack: (List<File> images) {
+                croppedFiles = images;
+                uploadImages(croppedFiles);
+              });
+        }
       },
       child: Container(
-        height: 72,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         child: Row(
-          children: [leading, kHorizontalPaddingLarge, title],
+          children: [
+            buttonAssets[mediaType]!['leading'],
+            kHorizontalPaddingLarge,
+            Text(buttonAssets[mediaType]!['title'])
+          ],
         ),
       ),
     );

@@ -16,7 +16,7 @@ class PostMediaFactory extends StatelessWidget {
   Widget build(BuildContext context) {
     if (attachments == null) return const SizedBox.shrink();
     return PostImage(
-      url: attachments!.map((e) => e.attachmentMeta.url ?? "").toList(),
+      attachments: attachments,
       postId: postId,
     );
   }

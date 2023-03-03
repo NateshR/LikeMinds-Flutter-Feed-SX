@@ -17,29 +17,34 @@ class _PostVideoState extends State<PostVideo>
   late ChewieController chewieController;
   @override
   void initState() {
+    super.initState();
+  }
+
+  Future initialiseControllers() async {
     videoPlayerController = VideoPlayerController.network(widget.url);
+    await videoPlayerController.initialize();
     chewieController = ChewieController(
       deviceOrientationsOnEnterFullScreen: [DeviceOrientation.portraitUp],
       videoPlayerController: videoPlayerController,
       autoPlay: true,
       looping: true,
+      aspectRatio: 1.0,
     );
-    super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
-        aspectRatio: 360.0 / 296.0,
+        aspectRatio: 1.0,
         child: FutureBuilder(
-            future: videoPlayerController.initialize(),
+            future: initialiseControllers(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.done) {
                 return Chewie(
                   controller: chewieController,
                 );
               }
-              return Center(
+              return const Center(
                 child: CircularProgressIndicator(),
               );
             }));

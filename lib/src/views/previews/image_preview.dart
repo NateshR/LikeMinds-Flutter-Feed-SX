@@ -3,11 +3,11 @@ import 'package:carousel_slider/carousel_slider.dart';
 import 'package:feed_sx/feed.dart';
 import 'package:feed_sx/src/utils/constants/ui_constants.dart';
 import 'package:flutter/material.dart';
-import 'package:photo_view/photo_view.dart';
+import 'package:likeminds_feed/likeminds_feed.dart';
 
 class ImagePreview extends StatefulWidget {
   static const route = '/image_preview';
-  final List<String> url;
+  final List<Attachment?> url;
   final String postId;
 
   const ImagePreview({
@@ -53,7 +53,8 @@ class _ImagePreviewState extends State<ImagePreview> {
                       CarouselSlider(
                         items: widget.url
                             .map((e) => CachedNetworkImage(
-                                imageUrl: e, fit: BoxFit.cover))
+                                imageUrl: e!.attachmentMeta.url ?? '',
+                                fit: BoxFit.cover))
                             .toList(),
                         options: CarouselOptions(
                             aspectRatio: 1.0,
@@ -93,7 +94,8 @@ class _ImagePreviewState extends State<ImagePreview> {
                 : SizedBox(
                     width: screenSize!.width,
                     child: CachedNetworkImage(
-                        imageUrl: widget.url[0], fit: BoxFit.cover),
+                        imageUrl: widget.url[0]!.attachmentMeta.url ?? '',
+                        fit: BoxFit.cover),
                   ),
           )),
     );
